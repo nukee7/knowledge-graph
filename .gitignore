@@ -1,0 +1,106 @@
+# ================================
+# Python
+# ================================
+
+pycache/
+*.py[cod]
+*$py.class
+
+# Bytecode / cache
+*.so
+*.dylib
+*.dll
+
+# Virtual environments
+venv/
+env/
+ENV/
+kg_env/
+.venv/
+
+# ================================
+# PyTorch / ML
+# ================================
+
+# Model checkpoints
+models/
+*.pth
+*.pt
+
+# Tensorboard logs
+runs/
+logs/
+
+# Training outputs
+checkpoints/
+outputs/
+
+# ================================
+# Dataset / Data files
+# ================================
+
+data/
+*.csv
+*.json
+*.tsv
+.txt
+
+# Exception: keep small config files if needed
+!data/README.md
+
+# ================================
+# NLTK / Downloads
+# ================================
+
+nltk_data/
+
+# ================================
+# Jupyter
+# ================================
+
+.ipynb_checkpoints/
+
+# ================================
+# Environment / Secrets
+# ================================
+
+.env
+.env.
+*.env
+
+# ================================
+# IDE / Editor
+# ================================
+
+# VS Code
+.vscode/
+
+# PyCharm
+.idea/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# ================================
+# Build / Distribution
+# ================================
+
+build/
+dist/
+*.egg-info/
+
+# ================================
+# Logs
+# ================================
+
+*.log
+
+# ================================
+# Testing
+# ================================
+
+.pytest_cache/
+coverage/
