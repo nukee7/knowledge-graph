@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useEffect } from "react";
 import {
   ReactFlow,
   Background,
@@ -23,6 +23,10 @@ interface GraphCanvasProps {
 
 function autoLayout(nodes: GraphData["nodes"]): Node[] {
   const count = nodes.length;
+  if (count === 0) {
+    return [];
+  }
+
   const radius = Math.max(180, count * 40);
   const cx = 400;
   const cy = 300;
