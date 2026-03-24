@@ -1,13 +1,12 @@
 import torch
-import nltk
+import spacy
 from fastapi import FastAPI
 from pydantic import BaseModel
-from typing import List
 
 from src.datasetloader import RelationDataset
 from src.model import RelationModel
+from src.inference import predict_relation
 
-nltk.download("punkt")
 
 # =========================
 # CONFIG
@@ -27,43 +26,34 @@ HIDDEN_DIM = 64
 
 app = FastAPI(
     title="Knowledge Graph Relation Extraction API",
-    description="Predict relations between entities using trained RNN + Attention model",
     version="1.0"
 )
 
 
-# =========================
-# REQUEST SCHEMAS
-# =========================
-
-class PredictionRequest(BaseModel):
-    sentence: str
-    entity1: str
-    entity2: str
-
-
-class BatchPredictionRequest(BaseModel):
-    items: List[PredictionRequest]
+# Load spaCy model
+nlp = spacy.load("en_core_web_sm")
 
 
 # =========================
-# GLOBALS (loaded once)
+# REQUEST SCHEMA
+# =========================
+
+class ParagraphRequest(BaseModel):
+    text: str
+
+
+# =========================
+# LOAD MODEL ON STARTUP
 # =========================
 
 dataset = None
 model = None
-device = None
-id_to_label = None
 
-
-# =========================
-# STARTUP: LOAD MODEL
-# =========================
 
 @app.on_event("startup")
 def load_model():
 
-    global dataset, model, device, id_to_label
+    global dataset, model
 
     print("Loading dataset...")
     dataset = RelationDataset(DATA_PATH)
@@ -84,23 +74,9 @@ def load_model():
         torch.load(MODEL_PATH, map_location="cpu")
     )
 
-    device_instance = torch.device(
-        "cuda" if torch.cuda.is_available() else "cpu"
-    )
-
-    model_instance.to(device_instance)
     model_instance.eval()
 
-    dataset_instance = dataset
-
-    id_to_label_map = {
-        v: k for k, v in dataset_instance.label_map.items()
-    }
-
-    dataset = dataset_instance
     model = model_instance
-    device = device_instance
-    id_to_label = id_to_label_map
 
     print("Model loaded successfully")
 
@@ -109,80 +85,88 @@ def load_model():
 # HELPER FUNCTIONS
 # =========================
 
-def encode(sentence, e1, e2):
+def generate_entity_pairs(
+    entities,
+    max_distance=5,
+    max_pairs=15
+):
+    """
+    Generate entity pairs using distance-based filtering
+    and a maximum pair limit.
 
-    sentence = dataset.mark_entities(sentence, e1, e2)
+    Parameters:
+        entities: list of spaCy entities
+        max_distance: maximum token distance allowed
+        max_pairs: maximum number of pairs to generate
 
-    tokens = nltk.word_tokenize(sentence.lower())
+    Returns:
+        list of (entity1, entity2) tuples
+    """
 
-    word_ids = [
-        dataset.vocab.get(t, 1)
-        for t in tokens
-    ]
+    pairs = []
 
-    def get_index(marker):
+    for i in range(len(entities)):
+        for j in range(i + 1, len(entities)):
 
-        for i, t in enumerate(tokens):
-            if t == marker:
-                return i
-        return 0
+            # Stop if pair limit reached
+            if len(pairs) >= max_pairs:
+                return pairs
 
-    e1_idx = get_index("<e1>")
-    e2_idx = get_index("<e2>")
+            e1 = entities[i]
+            e2 = entities[j]
 
-    pos1 = [i - e1_idx for i in range(len(tokens))]
-    pos2 = [i - e2_idx for i in range(len(tokens))]
+            # Token distance between entities
+            distance = abs(e1.start - e2.start)
 
-    return tokens, word_ids, pos1, pos2
+            # Keep only nearby entities
+            if distance <= max_distance:
+
+                pairs.append(
+                    (
+                        e1.text,
+                        e2.text
+                    )
+                )
+
+    return pairs
 
 
-def predict_relation(sentence, e1, e2):
+def extract_triples_from_text(text):
 
-    tokens, word_ids, pos1, pos2 = encode(
-        sentence,
-        e1,
-        e2
-    )
+    doc = nlp(text)
 
-    word_ids = torch.tensor(
-        [word_ids],
-        dtype=torch.long
-    ).to(device)
+    triples = []
 
-    pos1 = torch.tensor(
-        [pos1],
-        dtype=torch.long
-    ).to(device)
+    for sentence in doc.sents:
 
-    pos2 = torch.tensor(
-        [pos2],
-        dtype=torch.long
-    ).to(device)
+        entities = list(sentence.ents)
 
-    with torch.no_grad():
+        if len(entities) < 2:
+            continue
 
-        outputs = model(
-            word_ids,
-            pos1,
-            pos2
-        )
+        pairs = generate_entity_pairs(entities)
 
-        pred = torch.argmax(
-            outputs,
-            dim=1
-        ).item()
+        for e1, e2 in pairs:
 
-    relation = id_to_label[pred]
+            result = predict_relation(
+                sentence.text,
+                e1,
+                e2
+            )
 
-    return {
-        "entity1": e1,
-        "relation": relation,
-        "entity2": e2
-    }
+            triples.append(
+                {
+                    "entity1": e1,
+                    "relation": result["relation"],
+                    "entity2": e2
+                }
+            )
+
+    return triples
 
 
 # =========================
-# ROUTES
+# API ENDPOINTS
 # =========================
 
 @app.get("/health")
@@ -193,36 +177,14 @@ def health():
     }
 
 
-@app.post("/predict")
-def predict(request: PredictionRequest):
+@app.post("/extract")
+def extract_relations(request: ParagraphRequest):
 
-    result = predict_relation(
-        request.sentence,
-        request.entity1,
-        request.entity2
+    triples = extract_triples_from_text(
+        request.text
     )
 
     return {
-        "input": request,
-        "prediction": result
-    }
-
-
-@app.post("/batch_predict")
-def batch_predict(request: BatchPredictionRequest):
-
-    results = []
-
-    for item in request.items:
-
-        result = predict_relation(
-            item.sentence,
-            item.entity1,
-            item.entity2
-        )
-
-        results.append(result)
-
-    return {
-        "predictions": results
+        "triples": triples,
+        "count": len(triples)
     }
