@@ -6,15 +6,6 @@ echo "=================================="
 echo "Starting MLOps Pipeline"
 echo "=================================="
 
-# Activate virtual environment
-if [ -d "kg_env" ]; then
-    echo "Activating virtual environment..."
-    source kg_env/bin/activate
-else
-    echo "Virtual environment not found"
-    exit 1
-fi
-
 # Create required directories
 mkdir -p data/processed
 mkdir -p models
@@ -29,7 +20,7 @@ if [ ! -f "data/processed/processed_data.json" ]; then
     echo "Processed data not found"
     echo "Running preprocessing..."
 
-    python src/preprocess.py
+    python data/preprocess.py
 
 else
 
@@ -73,8 +64,6 @@ python src/test.py
 
 echo "Starting FastAPI server..."
 
-uvicorn server.app:app 
-    --host 0.0.0.0 
-    --port 8000
+exec uvicorn server.app:app --host 0.0.0.0 --port 8000
 
 echo "Pipeline finished"
