@@ -2,8 +2,8 @@ import torch
 from torch.utils.data import DataLoader, Subset
 from sklearn.metrics import classification_report, accuracy_score
 
-from src.datasetloader import RelationDataset
-from src.model import RelationModel
+from datasetloader import RelationDataset
+from model import RelationModel
 
 
 # -------- CONFIG --------

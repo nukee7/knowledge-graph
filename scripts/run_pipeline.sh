@@ -1,19 +1,12 @@
 #!/bin/bash
 
-# ==========================================
-# MLOps Pipeline Script
-# ==========================================
+set -e
 
-set -e   # stop on first error
-
-echo "=========================================="
+echo "=================================="
 echo "Starting MLOps Pipeline"
-echo "=========================================="
+echo "=================================="
 
-# ------------------------------------------
 # Activate virtual environment
-# ------------------------------------------
-
 if [ -d "kg_env" ]; then
     echo "Activating virtual environment..."
     source kg_env/bin/activate
@@ -22,60 +15,66 @@ else
     exit 1
 fi
 
-# ------------------------------------------
 # Create required directories
-# ------------------------------------------
-
-echo "Creating directories..."
-
 mkdir -p data/processed
 mkdir -p models
 mkdir -p logs
 
-# ------------------------------------------
-# Step 1 — Data Preprocessing
-# ------------------------------------------
+# -----------------------------------
+# Step 1 — Preprocessing (conditional)
+# -----------------------------------
 
-echo ""
-echo "Running preprocessing..."
+if [ ! -f "data/processed/processed_data.json" ]; then
 
-python src/preprocess.py
+    echo "Processed data not found"
+    echo "Running preprocessing..."
 
-echo "Preprocessing completed"
+    python src/preprocess.py
 
-# ------------------------------------------
-# Step 2 — Model Training
-# ------------------------------------------
+else
 
-echo ""
-echo "Running training..."
+    echo "Processed data already exists"
+    echo "Skipping preprocessing"
 
-python src/train.py
+fi
 
-echo "Training completed"
 
-# ------------------------------------------
-# Step 3 — Model Testing
-# ------------------------------------------
+# -----------------------------------
+# Step 2 — Training (conditional)
+# -----------------------------------
 
-echo ""
+if [ ! -f "models/model.pth" ]; then
+
+    echo "Model not found"
+    echo "Starting training..."
+
+    python src/train.py
+
+else
+
+    echo "Model already exists"
+    echo "Skipping training"
+
+fi
+
+
+# -----------------------------------
+# Step 3 — Testing (always run)
+# -----------------------------------
+
 echo "Running testing..."
 
 python src/test.py
 
-echo "Testing completed"
 
-# ------------------------------------------
-# Step 4 — Start FastAPI Server
-# ------------------------------------------
+# -----------------------------------
+# Step 4 — Start API server
+# -----------------------------------
 
-echo ""
 echo "Starting FastAPI server..."
 
-uvicorn api:app 
+uvicorn server.app:app 
     --host 0.0.0.0 
-    --port 8000 
-    --reload
+    --port 8000
 
-echo ""
 echo "Pipeline finished"
