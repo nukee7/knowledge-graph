@@ -1,16 +1,18 @@
-numpy>=1.26
-pandas>=2.2
-tqdm>=4.66
-
-# NLP
-nltk>=3.8
-regex>=2024.5
-
-# Deep Learning
+# Core ML / NLP
 torch>=2.3
+nltk>=3.8
+scikit-learn>=1.5
 
-# Optional (install only if needed)
-# scikit-learn>=1.5
+# API
+fastapi>=0.115
+pydantic>=2.0
+uvicorn>=0.30
+
+# Optional data tooling
+# numpy>=1.26
+# pandas>=2.2
+# tqdm>=4.66
+# regex>=2024.5
 # spacy>=3.7
 # networkx>=3.3
 # matplotlib>=3.8
