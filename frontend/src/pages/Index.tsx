@@ -1,32 +1,43 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import TextInputPanel from "@/components/TextInputPanel";
+import TextInputPanel, { type PredictionFormData } from "@/components/TextInputPanel";
 import GraphCanvas, { type GraphData } from "@/components/GraphCanvas";
 import { toast } from "sonner";
 
-// ──────────────────────────────────────────────
-// CONFIGURE YOUR API ENDPOINT HERE
-// The backend should accept POST { text: string }
-// and return { nodes: [{id, label}], edges: [{source, target, label?}] }
-const API_ENDPOINT = "/api/extract-graph";
-// ──────────────────────────────────────────────
+const API_PREFIX = import.meta.env.VITE_API_PREFIX || "/api";
+const API_ENDPOINT = `${API_PREFIX}/predict`;
+
+interface PredictionResponse {
+  prediction: {
+    entity1: string;
+    relation: string;
+    entity2: string;
+  };
+}
+
+function buildGraphData(prediction: PredictionResponse["prediction"]): GraphData {
+  return {
+    nodes: [
+      { id: prediction.entity1, label: prediction.entity1 },
+      { id: prediction.entity2, label: prediction.entity2 },
+    ],
+    edges: [
+      {
+        source: prediction.entity1,
+        target: prediction.entity2,
+        label: prediction.relation,
+      },
+    ],
+  };
+}
 
 // Demo fallback when no backend is running
 const DEMO_DATA: GraphData = {
   nodes: [
-    { id: "einstein", label: "Albert Einstein" },
-    { id: "relativity", label: "Theory of Relativity" },
-    { id: "ulm", label: "Ulm, Germany" },
-    { id: "switzerland", label: "Switzerland" },
-    { id: "physics", label: "Physics" },
-    { id: "nobel", label: "Nobel Prize" },
+    { id: "configuration", label: "configuration" },
+    { id: "elements", label: "elements" },
   ],
   edges: [
-    { source: "einstein", target: "relativity", label: "developed" },
-    { source: "einstein", target: "ulm", label: "born in" },
-    { source: "einstein", target: "switzerland", label: "moved to" },
-    { source: "einstein", target: "physics", label: "field" },
-    { source: "einstein", target: "nobel", label: "awarded" },
-    { source: "relativity", target: "physics", label: "belongs to" },
+    { source: "configuration", target: "elements", label: "component-whole" },
   ],
 };
 
@@ -40,24 +51,25 @@ const Index = () => {
     requestAnimationFrame(() => setMounted(true));
   }, []);
 
-  const handleSubmit = useCallback(async (text: string) => {
+  const handleSubmit = useCallback(async (payload: PredictionFormData) => {
     setLoading(true);
     try {
       const res = await fetch(API_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) throw new Error(`API error ${res.status}`);
 
-      const data: GraphData = await res.json();
-      setGraphData(data);
-      toast.success(`Graph generated — ${data.nodes.length} nodes, ${data.edges.length} edges`);
+      const data: PredictionResponse = await res.json();
+      const graph = buildGraphData(data.prediction);
+      setGraphData(graph);
+      toast.success(`Predicted relation: ${data.prediction.relation}`);
     } catch {
       // Fallback to demo data when backend isn't available
       setGraphData(DEMO_DATA);
-      toast.info("Using demo data — connect your API endpoint to get real results", {
+      toast.info("Using demo data — start the backend on port 8000 to get real predictions", {
         duration: 5000,
       });
     } finally {
@@ -87,7 +99,7 @@ const Index = () => {
             Text → Graph
           </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Knowledge graph extraction
+            Backend-connected relation prediction
           </p>
         </div>
       </div>
