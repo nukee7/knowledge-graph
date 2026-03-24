@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from src.datasetloader import RelationDataset
 from src.model import RelationModel
-from src.inference import predict_relation
+from src.inference import predict_with_confidence
 
 
 # =========================
@@ -29,8 +29,6 @@ app = FastAPI(
     version="1.0"
 )
 
-
-# Load spaCy model
 nlp = spacy.load("en_core_web_sm")
 
 
@@ -82,7 +80,40 @@ def load_model():
 
 
 # =========================
-# HELPER FUNCTIONS
+# ENTITY DETECTION
+# =========================
+
+def get_entities(sentence):
+
+    # Try Named Entity Recognition first
+    entities = list(sentence.ents)
+
+    # Fallback to noun detection if needed
+    if len(entities) < 2:
+
+        entities = [
+            token
+            for token in sentence
+            if token.pos_ in ["NOUN", "PROPN"]
+        ]
+
+    return entities
+
+
+# =========================
+# POSITION HELPER
+# =========================
+
+def get_position(entity):
+
+    if hasattr(entity, "start"):
+        return entity.start
+
+    return entity.i
+
+
+# =========================
+# PAIR GENERATION
 # =========================
 
 def generate_entity_pairs(
@@ -90,35 +121,25 @@ def generate_entity_pairs(
     max_distance=5,
     max_pairs=15
 ):
-    """
-    Generate entity pairs using distance-based filtering
-    and a maximum pair limit.
-
-    Parameters:
-        entities: list of spaCy entities
-        max_distance: maximum token distance allowed
-        max_pairs: maximum number of pairs to generate
-
-    Returns:
-        list of (entity1, entity2) tuples
-    """
 
     pairs = []
 
     for i in range(len(entities)):
         for j in range(i + 1, len(entities)):
 
-            # Stop if pair limit reached
             if len(pairs) >= max_pairs:
                 return pairs
 
             e1 = entities[i]
             e2 = entities[j]
 
-            # Token distance between entities
-            distance = abs(e1.start - e2.start)
+            pos1 = get_position(e1)
+            pos2 = get_position(e2)
 
-            # Keep only nearby entities
+            distance = abs(
+                pos1 - pos2
+            )
+
             if distance <= max_distance:
 
                 pairs.append(
@@ -131,38 +152,92 @@ def generate_entity_pairs(
     return pairs
 
 
+# =========================
+# CORE EXTRACTION LOGIC
+# =========================
+
 def extract_triples_from_text(text):
 
     doc = nlp(text)
 
-    triples = []
+    results = []
 
     for sentence in doc.sents:
 
-        entities = list(sentence.ents)
+        sentence_text = sentence.text
+
+        print("Sentence:", sentence_text)
+
+        entities = get_entities(sentence)
+
+        print(
+            "Entities:",
+            [e.text for e in entities]
+        )
 
         if len(entities) < 2:
             continue
 
-        pairs = generate_entity_pairs(entities)
+        pairs = generate_entity_pairs(
+            entities,
+            max_distance=5,
+            max_pairs=15
+        )
 
+        print("Pairs:", pairs)
+
+        if not pairs:
+            continue
+
+        best_result = None
+        best_confidence = -1
+
+        # Evaluate all candidate pairs
         for e1, e2 in pairs:
 
-            result = predict_relation(
-                sentence.text,
+            prediction = predict_with_confidence(
+                sentence_text,
                 e1,
                 e2
             )
 
-            triples.append(
+            confidence = prediction["confidence"]
+
+            print(
+                "PAIR:",
+                e1,
+                e2,
+                "REL:",
+                prediction["relation"],
+                "CONF:",
+                round(confidence, 4)
+            )
+
+            # Always select highest confidence
+            if confidence > best_confidence:
+
+                best_confidence = confidence
+                best_result = prediction
+
+        # Always append one result per sentence
+        if best_result is not None:
+
+            print("BEST RESULT:", best_result)
+
+            results.append(
                 {
-                    "entity1": e1,
-                    "relation": result["relation"],
-                    "entity2": e2
+                    "sentence": sentence_text,
+                    "entity1": best_result["entity1"],
+                    "relation": best_result["relation"],
+                    "entity2": best_result["entity2"],
+                    "confidence": round(
+                        best_confidence,
+                        4
+                    )
                 }
             )
 
-    return triples
+    return results
 
 
 # =========================

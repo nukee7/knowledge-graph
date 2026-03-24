@@ -4,18 +4,21 @@ import GraphCanvas, { type GraphData } from "@/components/GraphCanvas";
 import { toast } from "sonner";
 
 const API_PREFIX = import.meta.env.VITE_API_PREFIX || "/api";
-const API_ENDPOINT = `${API_PREFIX}/predict`;
+const API_ENDPOINT = `${API_PREFIX}/extract`;
 
 interface Triple {
+  sentence?: string;
   entity1: string;
   relation: string;
   entity2: string;
+  confidence?: number;
 }
 
 interface PredictionResponse {
   predictions?: Triple[];
   triples?: Triple[];
   results?: Triple[];
+  count?: number;
 }
 
 function toNodeId(value: string): string {

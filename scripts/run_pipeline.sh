@@ -64,6 +64,6 @@ python src/test.py
 
 echo "Starting FastAPI server..."
 
-exec uvicorn server.app:app --host 0.0.0.0 --port 8000
+exec uvicorn server.app:app --host 0.0.0.0 --port 8000 --reload
 
 echo "Pipeline finished"
