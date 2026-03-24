@@ -2,7 +2,7 @@
 # Python
 # ================================
 
-pycache/
+__pycache__/
 *.py[cod]
 *$py.class
 
@@ -40,10 +40,9 @@ outputs/
 # ================================
 
 data/
-*.csv
-*.json
-*.tsv
-.txt
+data/**/*.csv
+data/**/*.json
+data/**/*.tsv
 
 # Exception: keep small config files if needed
 !data/README.md
@@ -91,6 +90,19 @@ Thumbs.db
 build/
 dist/
 *.egg-info/
+frontend/dist/
+
+# ================================
+# Frontend / Node
+# ================================
+
+node_modules/
+frontend/node_modules/
+.npm/
+.pnpm-store/
+.yarn/
+frontend/.vite/
+*.tsbuildinfo
 
 # ================================
 # Logs
