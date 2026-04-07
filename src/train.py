@@ -12,7 +12,7 @@ MODEL_PATH = "./models/model.pth"
 TEST_INDICES_PATH = "./data/test_indices.pt"
 
 BATCH_SIZE = 32
-EPOCHS = 5
+EPOCHS = 40
 LR = 0.001
 
 EMBEDDING_DIM = 50

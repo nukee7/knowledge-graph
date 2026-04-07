@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { Link } from "react-router-dom";
 import TextInputPanel, { type PredictionFormData } from "@/components/TextInputPanel";
 import GraphCanvas, { type GraphData } from "@/components/GraphCanvas";
 import { toast } from "sonner";
@@ -133,13 +134,21 @@ const Index = () => {
         </div>
 
         {/* Floating title */}
-        <div className="pointer-events-none absolute left-6 top-5">
-          <h1 className="text-xl font-bold tracking-tight text-foreground">
-            Text → Graph
-          </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Multi-relation graph extraction
-          </p>
+        <div className="absolute left-6 top-5 flex items-start gap-4">
+          <div className="pointer-events-none">
+            <h1 className="text-xl font-bold tracking-tight text-foreground">
+              Text → Graph
+            </h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Multi-relation graph extraction
+            </p>
+          </div>
+          <Link
+            to="/about"
+            className="mt-0.5 rounded-md border border-border bg-card/80 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur-sm transition-colors hover:text-foreground hover:bg-card"
+          >
+            About
+          </Link>
         </div>
       </div>
     </div>
