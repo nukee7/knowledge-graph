@@ -116,3 +116,5 @@ frontend/.vite/
 
 .pytest_cache/
 coverage/
+
+report/

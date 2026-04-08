@@ -189,8 +189,7 @@ def extract_triples_from_text(text):
         if not pairs:
             continue
 
-        best_result = None
-        best_confidence = -1
+        CONFIDENCE_THRESHOLD = 0.5
 
         # Evaluate all candidate pairs
         for e1, e2 in pairs:
@@ -213,29 +212,24 @@ def extract_triples_from_text(text):
                 round(confidence, 4)
             )
 
-            # Always select highest confidence
-            if confidence > best_confidence:
-
-                best_confidence = confidence
-                best_result = prediction
-
-        # Always append one result per sentence
-        if best_result is not None:
-
-            print("BEST RESULT:", best_result)
-
-            results.append(
-                {
-                    "sentence": sentence_text,
-                    "entity1": best_result["entity1"],
-                    "relation": best_result["relation"],
-                    "entity2": best_result["entity2"],
-                    "confidence": round(
-                        best_confidence,
-                        4
-                    )
-                }
-            )
+            # Keep all predictions above threshold
+            # that are not "Other"
+            if (
+                confidence >= CONFIDENCE_THRESHOLD
+                and prediction["relation"] != "Other"
+            ):
+                results.append(
+                    {
+                        "sentence": sentence_text,
+                        "entity1": prediction["entity1"],
+                        "relation": prediction["relation"],
+                        "entity2": prediction["entity2"],
+                        "confidence": round(
+                            confidence,
+                            4
+                        )
+                    }
+                )
 
     return results
 
