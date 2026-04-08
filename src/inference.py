@@ -26,7 +26,7 @@ model = RelationModel(
     vocab_size=len(vocab),
     embedding_dim=50,
     pos_embedding_dim=10,
-    hidden_dim=64,
+    hidden_dim=128,
     num_classes=len(label_map)
 )
 
@@ -38,10 +38,19 @@ model.eval()
 
 
 # -------- HELPER FUNCTIONS --------
-def encode_sentence(sentence):
+def mark_entities(sentence, e1, e2):
+    """Add entity markers to match training format."""
+    sentence = sentence.replace(e1, f" <e1> {e1} </e1> ")
+    sentence = sentence.replace(e2, f" <e2> {e2} </e2> ")
+    return sentence
+
+
+def encode_sentence(sentence, entity1, entity2):
+
+    marked = mark_entities(sentence, entity1, entity2)
 
     tokens = nltk.word_tokenize(
-        sentence.lower()
+        marked.lower()
     )
 
     word_ids = [
@@ -52,24 +61,20 @@ def encode_sentence(sentence):
     return tokens, word_ids
 
 
-def get_entity_index(tokens, entity):
+def get_entity_index(tokens, marker):
 
-    entity_tokens = entity.lower().split()
-
-    for i in range(len(tokens)):
-
-        if tokens[i:i + len(entity_tokens)] == entity_tokens:
-
+    for i, t in enumerate(tokens):
+        if t == marker:
             return i
 
     return 0
 
 
-def get_positions(tokens, entity):
+def get_positions(tokens, marker):
 
     idx = get_entity_index(
         tokens,
-        entity
+        marker
     )
 
     return [
@@ -86,17 +91,19 @@ def predict_with_confidence(
 ):
 
     tokens, word_ids = encode_sentence(
-        sentence
+        sentence,
+        entity1,
+        entity2
     )
 
     pos1 = get_positions(
         tokens,
-        entity1
+        "<e1>"
     )
 
     pos2 = get_positions(
         tokens,
-        entity2
+        "<e2>"
     )
 
     word_ids = torch.tensor(

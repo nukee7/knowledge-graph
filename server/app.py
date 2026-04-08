@@ -17,7 +17,7 @@ MODEL_PATH = "./models/model.pth"
 
 EMBEDDING_DIM = 50
 POS_EMBEDDING_DIM = 10
-HIDDEN_DIM = 64
+HIDDEN_DIM = 128
 
 
 # =========================
@@ -80,74 +80,89 @@ def load_model():
 
 
 # =========================
-# ENTITY DETECTION
+# DEPENDENCY-BASED PAIRING
 # =========================
 
-def get_entities(sentence):
-
-    # Try Named Entity Recognition first
-    entities = list(sentence.ents)
-
-    # Fallback to noun detection if needed
-    if len(entities) < 2:
-
-        entities = [
-            token
-            for token in sentence
-            if token.pos_ in ["NOUN", "PROPN"]
-        ]
-
-    return entities
-
-
-# =========================
-# POSITION HELPER
-# =========================
-
-def get_position(entity):
-
-    if hasattr(entity, "start"):
-        return entity.start
-
-    return entity.i
-
-
-# =========================
-# PAIR GENERATION
-# =========================
-
-def generate_entity_pairs(
-    entities,
-    max_distance=5,
-    max_pairs=15
-):
+def dependency_pairs(sentence):
+    """
+    Extract entity pairs from the dependency tree.
+    Covers: verb relations, prepositional phrases,
+    compound nouns, appositives, and passive agents.
+    """
 
     pairs = []
+    seen = set()
 
-    for i in range(len(entities)):
-        for j in range(i + 1, len(entities)):
+    def add_pair(e1, e2):
+        key = (e1.lower(), e2.lower())
+        if key not in seen and e1.lower() != e2.lower():
+            seen.add(key)
+            pairs.append((e1, e2))
 
-            if len(pairs) >= max_pairs:
-                return pairs
+    for token in sentence:
 
-            e1 = entities[i]
-            e2 = entities[j]
+        # 1. Verb → subject + direct object / attribute
+        if token.pos_ == "VERB":
 
-            pos1 = get_position(e1)
-            pos2 = get_position(e2)
+            verbs = [token]
 
-            distance = abs(
-                pos1 - pos2
-            )
+            # Collect coordinated verbs (sells and distributes)
+            for child in token.children:
+                if child.dep_ == "conj" and child.pos_ == "VERB":
+                    verbs.append(child)
 
-            if distance <= max_distance:
+            # Find subject from the main verb
+            subject = None
+            for child in token.children:
+                if child.dep_ in ["nsubj", "nsubjpass"]:
+                    subject = child
 
-                pairs.append(
-                    (
-                        e1.text,
-                        e2.text
-                    )
-                )
+            if subject is None:
+                continue
+
+            for verb in verbs:
+
+                # Direct object
+                for child in verb.children:
+                    if child.dep_ in ["dobj", "attr"]:
+                        add_pair(subject.text, child.text)
+
+                # 2. Verb → subject + prepositional object
+                #    e.g. "sells computers through channels"
+                #    e.g. "distributes accessories to customers"
+                for child in verb.children:
+                    if child.dep_ == "prep":
+                        for grandchild in child.children:
+                            if grandchild.dep_ == "pobj":
+                                add_pair(subject.text, grandchild.text)
+
+                                # Also pair direct object with prep object
+                                # e.g. (accessories, customers)
+                                for sibling in verb.children:
+                                    if sibling.dep_ == "dobj":
+                                        add_pair(sibling.text, grandchild.text)
+
+        # 3. Noun → prep → pobj (noun-of-noun)
+        #    e.g. "regions of the world", "parts of the car"
+        if token.pos_ in ["NOUN", "PROPN"]:
+
+            for child in token.children:
+                if child.dep_ == "prep":
+                    for grandchild in child.children:
+                        if grandchild.dep_ == "pobj":
+                            add_pair(token.text, grandchild.text)
+
+            # 4. Compound nouns
+            #    e.g. "automation systems" → (automation, systems)
+            for child in token.children:
+                if child.dep_ == "compound":
+                    add_pair(child.text, token.text)
+
+            # 5. Appositive relations
+            #    e.g. "Einstein, a physicist" → (Einstein, physicist)
+            for child in token.children:
+                if child.dep_ == "appos":
+                    add_pair(token.text, child.text)
 
     return pairs
 
@@ -168,21 +183,7 @@ def extract_triples_from_text(text):
 
         print("Sentence:", sentence_text)
 
-        entities = get_entities(sentence)
-
-        print(
-            "Entities:",
-            [e.text for e in entities]
-        )
-
-        if len(entities) < 2:
-            continue
-
-        pairs = generate_entity_pairs(
-            entities,
-            max_distance=5,
-            max_pairs=15
-        )
+        pairs = dependency_pairs(sentence)
 
         print("Pairs:", pairs)
 
