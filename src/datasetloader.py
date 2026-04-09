@@ -1,4 +1,5 @@
 import json
+import numpy as np
 import torch
 from torch.utils.data import Dataset
 import nltk
@@ -45,6 +46,35 @@ class RelationDataset(Dataset):
                     vocab[token] = len(vocab)
 
         self.vocab = vocab
+
+    def load_glove(self, glove_path, embedding_dim):
+        """Load GloVe vectors and build a weight matrix for the vocab."""
+
+        print(f"Loading GloVe from {glove_path}...")
+
+        glove = {}
+        with open(glove_path, "r", encoding="utf-8") as f:
+            for line in f:
+                parts = line.strip().split()
+                word = parts[0]
+                vector = np.array(parts[1:], dtype=np.float32)
+                glove[word] = vector
+
+        vocab_size = len(self.vocab)
+        weight_matrix = np.random.uniform(-0.25, 0.25, (vocab_size, embedding_dim))
+
+        # PAD should be zeros
+        weight_matrix[0] = np.zeros(embedding_dim)
+
+        found = 0
+        for word, idx in self.vocab.items():
+            if word in glove:
+                weight_matrix[idx] = glove[word]
+                found += 1
+
+        print(f"GloVe coverage: {found}/{vocab_size} ({100*found/vocab_size:.1f}%)")
+
+        return torch.tensor(weight_matrix, dtype=torch.float32)
 
     def build_label_map(self):
 

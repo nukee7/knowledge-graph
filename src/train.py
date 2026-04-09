@@ -13,11 +13,14 @@ TEST_INDICES_PATH = "./data/test_indices.pt"
 
 BATCH_SIZE = 32
 EPOCHS = 40
-LR = 0.001
+LR = 1.0
+WEIGHT_DECAY = 1e-5
 
-EMBEDDING_DIM = 50
+EMBEDDING_DIM = 100
 POS_EMBEDDING_DIM = 10
 HIDDEN_DIM = 128
+
+GLOVE_PATH = "./data/embeddings/glove.6B.100d.txt"
 
 
 # -------- COLLATE FUNCTION --------
@@ -67,13 +70,17 @@ def main():
     print("Vocab size:", vocab_size)
     print("Number of classes:", num_classes)
 
+    # -------- LOAD GLOVE --------
+    glove_weights = dataset.load_glove(GLOVE_PATH, EMBEDDING_DIM)
+
     # -------- MODEL --------
     model = RelationModel(
         vocab_size,
         EMBEDDING_DIM,
         POS_EMBEDDING_DIM,
         HIDDEN_DIM,
-        num_classes
+        num_classes,
+        pretrained_weights=glove_weights
     )
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -81,7 +88,11 @@ def main():
 
     # -------- LOSS + OPTIMIZER --------
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=LR)
+    optimizer = torch.optim.Adadelta(
+        model.parameters(),
+        lr=LR,
+        weight_decay=WEIGHT_DECAY,
+    )
 
     # -------- TRAINING LOOP --------
     for epoch in range(EPOCHS):

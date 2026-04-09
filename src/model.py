@@ -5,10 +5,14 @@ import torch.nn.functional as F
 
 class RelationModel(nn.Module):
 
-    def __init__(self, vocab_size, embedding_dim, pos_embedding_dim, hidden_dim, num_classes):
+    def __init__(self, vocab_size, embedding_dim, pos_embedding_dim, hidden_dim, num_classes, pretrained_weights=None):
         super().__init__()
 
         self.word_embedding = nn.Embedding(vocab_size, embedding_dim)
+
+        if pretrained_weights is not None:
+            self.word_embedding.weight = nn.Parameter(pretrained_weights)
+            self.word_embedding.weight.requires_grad = True  # fine-tune
 
         self.pos1_embedding = nn.Embedding(500, pos_embedding_dim)
         self.pos2_embedding = nn.Embedding(500, pos_embedding_dim)

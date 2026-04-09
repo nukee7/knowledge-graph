@@ -15,7 +15,7 @@ from src.inference import predict_with_confidence
 DATA_PATH = "./data/processed/processed_data.json"
 MODEL_PATH = "./models/model.pth"
 
-EMBEDDING_DIM = 50
+EMBEDDING_DIM = 100
 POS_EMBEDDING_DIM = 10
 HIDDEN_DIM = 128
 
@@ -94,6 +94,11 @@ def dependency_pairs(sentence):
     seen = set()
 
     def add_pair(e1, e2):
+        # Skip pronouns — not meaningful entities
+        if e1.lower() in ("it", "he", "she", "they", "them", "his", "her", "its", "this", "that", "these", "those", "who", "which"):
+            return
+        if e2.lower() in ("it", "he", "she", "they", "them", "his", "her", "its", "this", "that", "these", "those", "who", "which"):
+            return
         key = (e1.lower(), e2.lower())
         if key not in seen and e1.lower() != e2.lower():
             seen.add(key)

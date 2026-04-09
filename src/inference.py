@@ -24,7 +24,7 @@ id_to_label = {v: k for k, v in label_map.items()}
 # -------- LOAD MODEL --------
 model = RelationModel(
     vocab_size=len(vocab),
-    embedding_dim=50,
+    embedding_dim=100,
     pos_embedding_dim=10,
     hidden_dim=128,
     num_classes=len(label_map)
