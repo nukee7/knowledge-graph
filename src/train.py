@@ -1,3 +1,4 @@
+import json
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, random_split
@@ -95,6 +96,8 @@ def main():
     )
 
     # -------- TRAINING LOOP --------
+    loss_history = []
+
     for epoch in range(EPOCHS):
 
         model.train()
@@ -118,12 +121,18 @@ def main():
             total_loss += loss.item()
 
         avg_loss = total_loss / len(train_loader)
+        loss_history.append(avg_loss)
         print(f"Epoch {epoch+1}/{EPOCHS}, Loss: {avg_loss:.4f}")
 
     # -------- SAVE MODEL --------
     torch.save(model.state_dict(), MODEL_PATH)
     print("Model saved to:", MODEL_PATH)
     print("Test indices saved to:", TEST_INDICES_PATH)
+
+    # -------- SAVE LOSS HISTORY --------
+    with open("./logs/loss_history.json", "w") as f:
+        json.dump(loss_history, f)
+    print("Loss history saved to: ./logs/loss_history.json")
 
 
 if __name__ == "__main__":

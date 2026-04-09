@@ -1,6 +1,7 @@
 import torch
 import spacy
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from src.datasetloader import RelationDataset
@@ -27,6 +28,14 @@ HIDDEN_DIM = 128
 app = FastAPI(
     title="Knowledge Graph Relation Extraction API",
     version="1.0"
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 nlp = spacy.load("en_core_web_sm")

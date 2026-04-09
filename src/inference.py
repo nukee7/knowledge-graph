@@ -5,7 +5,14 @@ import nltk
 from src.model import RelationModel
 from src.datasetloader import RelationDataset
 
-nltk.download("punkt")
+import ssl
+try:
+    _create_unverified_https_context = ssl._create_unverified_context
+except AttributeError:
+    pass
+else:
+    ssl._create_default_https_context = _create_unverified_https_context
+nltk.download("punkt_tab", quiet=True)
 
 MODEL_PATH = "./models/model.pth"
 DATA_PATH = "./data/processed/processed_data.json"
